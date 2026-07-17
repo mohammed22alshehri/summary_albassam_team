@@ -76,6 +76,41 @@
   .shiftbtn .stime{font-size:.7rem; color:var(--muted);}
   .shiftbtn.on{background:var(--accent); border-color:var(--accent); color:#fff;}
   .shiftbtn.on .stime{color:#d3e8ef;}
+  /* Detail entry cards */
+  .detail-group{margin-bottom:16px;}
+  .detail-group:last-child{margin-bottom:0;}
+  .detail-group > h3{
+    font-size:.85rem; font-weight:700; color:var(--accent-dark);
+    margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  }
+  .detail-group > h3 .badge{
+    background:var(--accent); color:#fff; border-radius:99px;
+    font-size:.7rem; padding:2px 8px;
+  }
+  .entry{
+    border:1px solid var(--line); border-radius:12px; background:#fbfcfd;
+    padding:12px; margin-bottom:10px;
+  }
+  .entry:last-child{margin-bottom:0;}
+  .entry .ehead{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .entry .etitle{font-size:.72rem; font-weight:700; color:var(--muted);}
+  .entry .edel{
+    border:1px solid #f0d4d4; background:#fdf3f3; color:#a33;
+    border-radius:8px; padding:4px 10px; font-family:inherit;
+    font-size:.72rem; font-weight:700; cursor:pointer;
+  }
+  .entry .edel:active{background:#a33; color:#fff;}
+  .entry .efield{margin-bottom:8px;}
+  .entry .efield:last-child{margin-bottom:0;}
+  .entry label{font-size:.72rem; margin-bottom:4px;}
+  .entry input{
+    width:100%; border:1px solid var(--line); border-radius:8px;
+    padding:9px 10px; font-family:inherit; font-size:.9rem; background:#fff;
+  }
+  .empty-note{font-size:.8rem; color:var(--muted); text-align:center; padding:8px 0;}
   .preview-title{font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:8px;}
   .bubble{
     background:var(--wa); color:var(--wa-ink);
@@ -167,9 +202,17 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-title">Details — appears automatically based on the numbers above. Fill what you know; empty fields are skipped.</div>
+    <div id="details"><div class="empty-note">Increase any counter above to add its details here.</div></div>
+  </div>
+
+  <div class="card">
     <div class="field">
-      <label for="regarding">Regarding — shift details</label>
-      <textarea id="regarding" placeholder="e.g. Received three emails from PetroRabigh inquiring about ticket numbers, and responses were sent.&#10;&#10;Leave empty if nothing happened — it will say 'Nothing to report.'"></textarea>
+      <label for="regarding">Regarding — shift details (auto-written from the forms above, or type/edit directly here)</label>
+      <textarea id="regarding" placeholder="Filled automatically from the detail forms above — or write here directly.&#10;&#10;Leave empty if nothing happened — it will say 'Nothing to report.'"></textarea>
     </div>
   </div>
 
@@ -205,6 +248,98 @@
     'Hayder Albayibi',
     'Hussain Alqrous'
   ];
+
+  // Detail types: which counters get detail forms, their fields, and sentence builders
+  const DETAIL_TYPES = [
+    {
+      id:'callsIn', title:'Calls Received', single:'Call Received',
+      fields:[
+        {key:'reason',  label:'Reason for the call'},
+        {key:'ticket',  label:'Ticket number (if any)'},
+        {key:'company', label:'Company name (if any)'}
+      ],
+      sentence: d => {
+        let s = 'Received a call' + (d.company ? ' from ' + d.company : '');
+        if (d.reason) s += ' regarding ' + d.reason;
+        if (d.ticket) s += ' (Ticket #' + d.ticket + ')';
+        return s + '.';
+      }
+    },
+    {
+      id:'callsOut', title:'Outbound Calls', single:'Outbound Call',
+      fields:[
+        {key:'reason',  label:'Reason for the call'},
+        {key:'ticket',  label:'Ticket number (if any)'},
+        {key:'company', label:'Company name (if any)'}
+      ],
+      sentence: d => {
+        let s = 'An outbound call was made' + (d.company ? ' to ' + d.company : '');
+        if (d.reason) s += ' regarding ' + d.reason;
+        if (d.ticket) s += ' (Ticket #' + d.ticket + ')';
+        return s + '.';
+      }
+    },
+    {
+      id:'requests', title:'Requests Raised', single:'Request',
+      fields:[
+        {key:'ticket',  label:'Ticket number'},
+        {key:'company', label:'Company name'},
+        {key:'reason',  label:'Request description'}
+      ],
+      sentence: d => {
+        let s = 'A request' + (d.ticket ? ' (Ticket #' + d.ticket + ')' : '') + ' was raised';
+        if (d.company) s += ' for ' + d.company;
+        if (d.reason) s += ' regarding ' + d.reason;
+        return s + '.';
+      }
+    },
+    {
+      id:'complaints', title:'Complaints', single:'Complaint',
+      fields:[
+        {key:'ticket',  label:'Ticket number'},
+        {key:'company', label:'Company name'},
+        {key:'reason',  label:'Issue description'}
+      ],
+      sentence: d => {
+        let s = 'Ticket' + (d.ticket ? ' #' + d.ticket : '') + ' was raised';
+        if (d.company) s += ' for ' + d.company;
+        if (d.reason) s += ' due to ' + d.reason;
+        return s + '.';
+      }
+    },
+    {
+      id:'followups', title:'Follow-ups', single:'Follow-up',
+      fields:[
+        {key:'ticket',  label:'Ticket number (if any)'},
+        {key:'company', label:'Company name (if any)'},
+        {key:'reason',  label:'Follow-up details'}
+      ],
+      sentence: d => {
+        let s = 'Followed up' + (d.ticket ? ' on Ticket #' + d.ticket : '');
+        if (d.company) s += ' with ' + d.company;
+        if (d.reason) s += ' regarding ' + d.reason;
+        return s + '.';
+      }
+    },
+    {
+      id:'emailsIn', title:'Emails Received', single:'Email',
+      fields:[
+        {key:'reason',  label:'Email subject / reason'},
+        {key:'ticket',  label:'Ticket number (if any)'},
+        {key:'company', label:'Company name (if any)'}
+      ],
+      sentence: d => {
+        let s = 'Received an email' + (d.company ? ' from ' + d.company : '');
+        if (d.reason) s += ' regarding ' + d.reason;
+        if (d.ticket) s += ' (Ticket #' + d.ticket + ')';
+        return s + '.';
+      }
+    }
+  ];
+
+  const MAX_ENTRIES = 15; // safety cap on rendered detail cards per type
+  const detailData = {};  // detailData[typeId][index] = {reason, ticket, company}
+  DETAIL_TYPES.forEach(t => detailData[t.id] = []);
 
   const selected = new Set();
 
@@ -261,6 +396,104 @@
     return v;
   }
 
+  // ---- Detail forms: rendered based on counter values ----
+  function renderDetails(){
+    const box = $('details');
+    box.innerHTML = '';
+    let any = false;
+    let trimmed = false;
+
+    DETAIL_TYPES.forEach(type => {
+      const count = Math.min(clampNum($(type.id)), MAX_ENTRIES);
+      // trim saved data if counter decreased — and remember to re-sync the big box
+      if (detailData[type.id].length > count) {
+        detailData[type.id].length = count;
+        trimmed = true;
+      }
+      if (count === 0) return;
+      any = true;
+
+      const group = document.createElement('div');
+      group.className = 'detail-group';
+      group.innerHTML = '<h3>' + type.title + ' <span class="badge">' + count + '</span></h3>';
+
+      for (let i = 0; i < count; i++) {
+        if (!detailData[type.id][i]) detailData[type.id][i] = {};
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+
+        const head = document.createElement('div');
+        head.className = 'ehead';
+        const et = document.createElement('div');
+        et.className = 'etitle';
+        et.textContent = type.single + ' #' + (i + 1);
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'edel';
+        del.textContent = '🗑 Delete';
+        del.addEventListener('click', () => {
+          // remove THIS specific entry (not just the last one)
+          detailData[type.id].splice(i, 1);
+          // decrement the matching counter
+          $(type.id).value = Math.max(0, clampNum($(type.id)) - 1);
+          renderDetails();
+          syncRegardingFromForms();
+          render();
+        });
+        head.appendChild(et);
+        head.appendChild(del);
+        entry.appendChild(head);
+
+        type.fields.forEach(f => {
+          const wrap = document.createElement('div');
+          wrap.className = 'efield';
+          const lab = document.createElement('label');
+          lab.textContent = f.label;
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.value = detailData[type.id][i][f.key] || '';
+          inp.addEventListener('input', () => {
+            detailData[type.id][i][f.key] = inp.value.trim();
+            syncRegardingFromForms();
+            render();
+          });
+          wrap.appendChild(lab);
+          wrap.appendChild(inp);
+          entry.appendChild(wrap);
+        });
+        group.appendChild(entry);
+      }
+      box.appendChild(group);
+    });
+
+    if (!any) {
+      box.innerHTML = '<div class="empty-note">Increase any counter above to add its details here.</div>';
+    }
+
+    // If entries were removed by lowering a counter, wipe them from the big box too
+    if (trimmed) syncRegardingFromForms();
+  }
+
+  // Compose Regarding text from all filled detail entries
+  function composeFromForms(){
+    const lines = [];
+    DETAIL_TYPES.forEach(type => {
+      detailData[type.id].forEach(d => {
+        if (!d) return;
+        const hasAny = type.fields.some(f => d[f.key]);
+        if (hasAny) lines.push('- ' + type.sentence(d));
+      });
+    });
+    return lines.join('\n');
+  }
+
+  // Write composed text into the big Regarding box (last writer wins:
+  // editing a form field regenerates the box; editing the box directly keeps your text
+  // until you touch a form field again)
+  function syncRegardingFromForms(){
+    $('regarding').value = composeFromForms();
+  }
+
   function buildMessage(){
     const agents = TEAM.filter(n => selected.has(n)).join(', ') || '—';
     const regarding = $('regarding').value.trim() || 'Nothing to report.';
@@ -277,19 +510,26 @@ Agents on Shift: ${agents}
 - Follow-ups: ${clampNum($('followups'))}
 - Emails Received: ${clampNum($('emailsIn'))}
 
-Regarding: ${regarding}`;
+Regarding: ${regarding ? '\n' + regarding : regarding}`.replace('Regarding: \n', 'Regarding:\n');
   }
 
   function render(){ $('preview').textContent = buildMessage(); }
 
-  document.querySelectorAll('input, textarea').forEach(el => {
-    el.addEventListener('input', render);
+  // Counter number typed directly
+  document.querySelectorAll('.num').forEach(el => {
+    el.addEventListener('input', () => { renderDetails(); render(); });
   });
 
+  // Date + Regarding typed directly
+  $('dateField').addEventListener('input', render);
+  $('regarding').addEventListener('input', render);
+
+  // +/- buttons
   document.querySelectorAll('.cbtns button').forEach(btn => {
     btn.addEventListener('click', () => {
       const el = $(btn.dataset.t);
       el.value = Math.max(0, clampNum(el) + parseInt(btn.dataset.d, 10));
+      renderDetails();
       render();
     });
   });
@@ -322,7 +562,6 @@ Regarding: ${regarding}`;
         await navigator.share({ text });
         return;
       }catch(e){
-        // User cancelled the share sheet — do nothing
         if (e && e.name === 'AbortError') return;
       }
     }
@@ -332,6 +571,7 @@ Regarding: ${regarding}`;
 
   renderShifts();
   renderChips();
+  renderDetails();
   render();
 </script>
 </body>
