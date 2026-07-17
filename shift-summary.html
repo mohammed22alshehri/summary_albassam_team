@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2733; --muted:#6b7a8a; --line:#e3e9ef;
+    --bg:#f2f5f8; --card:#ffffff;
+    --accent:#0e6e8c; --accent-dark:#0a5265;
+    --wa:#dcf8c6; --wa-ink:#1f3d1f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:"IBM Plex Sans", Tahoma, sans-serif;
+    background:var(--bg); color:var(--ink);
+    min-height:100vh; padding:16px 14px 40px;
+  }
+  .wrap{max-width:520px; margin:0 auto;}
+  header{margin-bottom:18px;}
+  header h1{font-size:1.35rem; font-weight:700;}
+  header p{color:var(--muted); font-size:.85rem; margin-top:4px;}
+  .card{
+    background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:16px; margin-bottom:14px;
+  }
+  label{display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:6px;}
+  input[type=text], input[type=date], textarea, select{
+    width:100%; border:1px solid var(--line); border-radius:10px;
+    padding:11px 12px; font-family:inherit; font-size:1rem; color:var(--ink);
+    background:#fbfcfd;
+  }
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--accent); border-color:transparent;}
+  input[type=date]{
+    -webkit-appearance:none; appearance:none;
+    min-height:46px; display:block;
+  }
+  textarea{resize:vertical; min-height:90px;}
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    border:1px solid var(--line); background:#fbfcfd; color:var(--ink);
+    border-radius:99px; padding:8px 14px; font-family:inherit;
+    font-size:.85rem; font-weight:600; cursor:pointer;
+  }
+  .chip.on{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .counters{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .counter{text-align:center;}
+  .counter .cbox{
+    border:1px solid var(--line); border-radius:12px; background:#fbfcfd;
+    display:flex; flex-direction:column; align-items:center; padding:8px 4px;
+  }
+  .counter .num{
+    font-size:1.5rem; font-weight:700; width:100%; text-align:center;
+    border:none; background:transparent; font-family:inherit; color:var(--ink);
+  }
+  .counter .num:focus{outline:none;}
+  .cbtns{display:flex; gap:6px; margin-top:6px;}
+  .cbtns button{
+    width:36px; height:30px; border:none; border-radius:8px;
+    background:var(--line); font-size:1.05rem; font-weight:700; color:var(--ink);
+    cursor:pointer;
+  }
+  .cbtns button:active{background:var(--accent); color:#fff;}
+  .clabel{font-size:.72rem; color:var(--muted); margin-top:6px; font-weight:600; line-height:1.4;}
+  .shiftbtns{display:flex; gap:8px;}
+  .shiftbtn{
+    flex:1; border:1px solid var(--line); background:#fbfcfd; color:var(--ink);
+    border-radius:12px; padding:10px 6px; font-family:inherit; cursor:pointer;
+    display:flex; flex-direction:column; gap:2px; align-items:center;
+  }
+  .shiftbtn .sname{font-weight:700; font-size:.9rem;}
+  .shiftbtn .stime{font-size:.7rem; color:var(--muted);}
+  .shiftbtn.on{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .shiftbtn.on .stime{color:#d3e8ef;}
+  .preview-title{font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:8px;}
+  .bubble{
+    background:var(--wa); color:var(--wa-ink);
+    border-radius:12px 12px 12px 3px;
+    padding:12px 14px; font-size:.9rem; line-height:1.85;
+    white-space:pre-wrap; box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  .actions{display:flex; gap:10px; margin-top:14px;}
+  .actions button{
+    flex:1; padding:13px; border:none; border-radius:12px;
+    font-family:inherit; font-size:1rem; font-weight:700; cursor:pointer;
+  }
+  #copyBtn{background:var(--accent); color:#fff;}
+  #copyBtn:active{background:var(--accent-dark);}
+  #shareBtn{background:#e8eef3; color:var(--ink);}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 20px; border-radius:99px;
+    font-size:.85rem; opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .hint{font-size:.75rem; color:var(--muted); margin-top:10px; text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📋 Shift Summary</h1>
+    <p>Fill in the numbers, tap the agents on shift, then copy the summary to the WhatsApp group. Zeros count too — the summary is required every shift.</p>
+  </header>
+
+  <div class="card">
+    <div class="field">
+      <label for="dateField">Date</label>
+      <input type="date" id="dateField">
+    </div>
+    <div class="field">
+      <label>Shift</label>
+      <div class="shiftbtns" id="shiftbtns"></div>
+    </div>
+    <div class="field">
+      <label>Agents on Shift — tap to select</label>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="field">
+      <label>Shift Numbers</label>
+      <div class="counters">
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="callsIn" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="callsIn" data-d="1">+</button><button type="button" data-t="callsIn" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Calls Received</div>
+        </div>
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="callsOut" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="callsOut" data-d="1">+</button><button type="button" data-t="callsOut" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Outbound Calls</div>
+        </div>
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="requests" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="requests" data-d="1">+</button><button type="button" data-t="requests" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Requests Raised</div>
+        </div>
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="complaints" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="complaints" data-d="1">+</button><button type="button" data-t="complaints" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Complaints</div>
+        </div>
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="followups" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="followups" data-d="1">+</button><button type="button" data-t="followups" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Follow-ups</div>
+        </div>
+        <div class="counter">
+          <div class="cbox">
+            <input class="num" id="emailsIn" inputmode="numeric" value="0">
+            <div class="cbtns"><button type="button" data-t="emailsIn" data-d="1">+</button><button type="button" data-t="emailsIn" data-d="-1">−</button></div>
+          </div>
+          <div class="clabel">Emails Received</div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="regarding">Regarding — shift details</label>
+      <textarea id="regarding" placeholder="e.g. Received three emails from PetroRabigh inquiring about ticket numbers, and responses were sent.&#10;&#10;Leave empty if nothing happened — it will say 'Nothing to report.'"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="preview-title">Message preview — this is how it will look in the group:</div>
+    <div class="bubble" id="preview"></div>
+    <div class="actions">
+      <button id="copyBtn" type="button">📋 Copy Message</button>
+      <button id="shareBtn" type="button">📤 Share to WhatsApp</button>
+    </div>
+    <div class="hint">After copying: open the WhatsApp group and paste the message.</div>
+  </div>
+</div>
+<div class="toast" id="toast">Message copied ✓</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  const SHIFTS = [
+    { name:'Morning', time:'07:00 AM – 04:00 PM' },
+    { name:'Evening', time:'03:00 PM – 12:00 AM' },
+    { name:'Night',   time:'11:00 PM – 08:00 AM' }
+  ];
+
+  const TEAM = [
+    'Mohammed Alabbas',
+    'Mohammed Alshehri',
+    'Bashar Alzahrani',
+    'Basil Alsadiq',
+    'Abdulaziz Alhumaydhan',
+    'Saad Alsaad',
+    'Abdulhadi Algaud',
+    'Hayder Albayibi',
+    'Hussain Alqrous'
+  ];
+
+  const selected = new Set();
+
+  // Auto-fill today's date (date picker needs YYYY-MM-DD)
+  function toISO(d){
+    const p = n => String(n).padStart(2,'0');
+    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+  }
+  $('dateField').value = toISO(new Date());
+
+  function formatDate(iso){
+    if(!iso) return '—';
+    const [y,m,d] = iso.split('-').map(Number);
+    return new Date(y, m-1, d).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  }
+
+  // Auto-select shift based on current hour
+  const h = new Date().getHours();
+  let shiftIdx = (h >= 5 && h < 15) ? 0 : (h >= 15 && h < 23) ? 1 : 2;
+
+  function renderShifts(){
+    const box = $('shiftbtns');
+    box.innerHTML = '';
+    SHIFTS.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'shiftbtn' + (i === shiftIdx ? ' on' : '');
+      b.innerHTML = '<span class="sname">' + s.name + '</span><span class="stime">' + s.time + '</span>';
+      b.addEventListener('click', () => { shiftIdx = i; renderShifts(); render(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderChips(){
+    const box = $('chips');
+    box.innerHTML = '';
+    TEAM.forEach(name => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (selected.has(name) ? ' on' : '');
+      b.textContent = name;
+      b.addEventListener('click', () => {
+        selected.has(name) ? selected.delete(name) : selected.add(name);
+        renderChips(); render();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function clampNum(el){
+    let v = parseInt(el.value.replace(/[^0-9]/g,''), 10);
+    if (isNaN(v) || v < 0) v = 0;
+    el.value = v;
+    return v;
+  }
+
+  function buildMessage(){
+    const agents = TEAM.filter(n => selected.has(n)).join(', ') || '—';
+    const regarding = $('regarding').value.trim() || 'Nothing to report.';
+    return `*Shift Summary*
+
+Date: ${formatDate($('dateField').value)}
+Shift Time: ${SHIFTS[shiftIdx].time}
+Agents on Shift: ${agents}
+
+- Calls Received: ${clampNum($('callsIn'))}
+- Outbound Calls: ${clampNum($('callsOut'))}
+- Requests Raised: ${clampNum($('requests'))}
+- Complaints: ${clampNum($('complaints'))}
+- Follow-ups: ${clampNum($('followups'))}
+- Emails Received: ${clampNum($('emailsIn'))}
+
+Regarding: ${regarding}`;
+  }
+
+  function render(){ $('preview').textContent = buildMessage(); }
+
+  document.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', render);
+  });
+
+  document.querySelectorAll('.cbtns button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = $(btn.dataset.t);
+      el.value = Math.max(0, clampNum(el) + parseInt(btn.dataset.d, 10));
+      render();
+    });
+  });
+
+  function showToast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  $('copyBtn').addEventListener('click', async () => {
+    const text = buildMessage();
+    try{
+      await navigator.clipboard.writeText(text);
+      showToast('Message copied ✓');
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+      showToast('Message copied ✓');
+    }
+  });
+
+  $('shareBtn').addEventListener('click', async () => {
+    const text = buildMessage();
+    // Web Share API — opens the native share sheet on iPhone & Android
+    if (navigator.share){
+      try{
+        await navigator.share({ text });
+        return;
+      }catch(e){
+        // User cancelled the share sheet — do nothing
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    // Fallback: open WhatsApp directly with the message pre-filled
+    window.location.href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  });
+
+  renderShifts();
+  renderChips();
+  render();
+</script>
+</body>
+</html>
