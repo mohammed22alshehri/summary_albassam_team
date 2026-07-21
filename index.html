@@ -37,6 +37,19 @@
     -webkit-appearance:none; appearance:none;
     min-height:46px; display:block;
   }
+  .daterow{display:flex; gap:6px; align-items:stretch;}
+  .daterow input[type=date]{flex:1; min-width:0;}
+  .daynav{
+    border:1px solid var(--line); background:#fbfcfd; color:var(--ink);
+    border-radius:10px; padding:0 10px; font-family:inherit;
+    font-size:.72rem; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .daynav:active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .datenote{
+    display:none; font-size:.72rem; color:var(--accent-dark);
+    background:#eaf4f8; border-radius:8px; padding:7px 10px; margin-top:6px;
+    line-height:1.5;
+  }
   textarea{resize:vertical; min-height:90px;}
   .field{margin-bottom:14px;}
   .field:last-child{margin-bottom:0;}
@@ -145,7 +158,12 @@
   <div class="card">
     <div class="field">
       <label for="dateField">Date</label>
-      <input type="date" id="dateField">
+      <div class="daterow">
+        <button type="button" class="daynav" id="dayPrev">◀ Prev day</button>
+        <input type="date" id="dateField">
+        <button type="button" class="daynav" id="dayNext">Next day ▶</button>
+      </div>
+      <div class="datenote" id="dateNote"></div>
     </div>
     <div class="field">
       <label>Shift</label>
@@ -343,12 +361,21 @@
 
   const selected = new Set();
 
-  // Auto-fill today's date (date picker needs YYYY-MM-DD)
+  // Auto-fill the date (date picker needs YYYY-MM-DD)
+  // Overnight rule: between midnight and 8 AM the shift actually belongs to
+  // the PREVIOUS day (Evening ends at 12 AM, Night runs 11 PM – 8 AM),
+  // so we default the date back by one day.
   function toISO(d){
     const p = n => String(n).padStart(2,'0');
     return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
   }
-  $('dateField').value = toISO(new Date());
+
+  const now = new Date();
+  const nowHour = now.getHours();
+
+  // Auto-select shift based on current hour
+  // Night covers 11 PM – 8 AM, Morning 8 AM – 3 PM, Evening 3 PM – 11 PM
+  let shiftIdx = (nowHour >= 23 || nowHour < 8) ? 2 : (nowHour < 15 ? 0 : 1);
 
   function formatDate(iso){
     if(!iso) return '—';
@@ -356,9 +383,47 @@
     return new Date(y, m-1, d).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
   }
 
-  // Auto-select shift based on current hour
-  const h = new Date().getHours();
-  let shiftIdx = (h >= 5 && h < 15) ? 0 : (h >= 15 && h < 23) ? 1 : 2;
+  // The date follows the SHIFT you pick:
+  // Morning        → the device's date
+  // Evening / Night → the device's date minus one day
+  function shiftStartDate(idx){
+    const d = new Date();
+    if (idx !== 0) d.setDate(d.getDate() - 1);
+    return toISO(d);
+  }
+
+  function setDateFor(idx){
+    $('dateField').value = shiftStartDate(idx);
+    updateDateNote();
+  }
+
+  function updateDateNote(){
+    const note = $('dateNote');
+    const todayISO = toISO(new Date());
+    if ($('dateField').value !== todayISO) {
+      note.textContent = 'Date is set to ' + formatDate($('dateField').value)
+        + ' — the day this shift started. Use Prev/Next day to change it.';
+      note.style.display = 'block';
+    } else {
+      note.style.display = 'none';
+    }
+  }
+
+  setDateFor(shiftIdx);
+
+  // Manual day nudge — always available, whatever the clock says
+  function nudgeDay(delta){
+    const v = $('dateField').value;
+    if (!v) return;
+    const [y,m,d] = v.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    dt.setDate(dt.getDate() + delta);
+    $('dateField').value = toISO(dt);
+    updateDateNote();
+    render();
+  }
+  $('dayPrev').addEventListener('click', () => nudgeDay(-1));
+  $('dayNext').addEventListener('click', () => nudgeDay(1));
 
   function renderShifts(){
     const box = $('shiftbtns');
@@ -368,7 +433,7 @@
       b.type = 'button';
       b.className = 'shiftbtn' + (i === shiftIdx ? ' on' : '');
       b.innerHTML = '<span class="sname">' + s.name + '</span><span class="stime">' + s.time + '</span>';
-      b.addEventListener('click', () => { shiftIdx = i; renderShifts(); render(); });
+      b.addEventListener('click', () => { shiftIdx = i; setDateFor(i); renderShifts(); render(); });
       box.appendChild(b);
     });
   }
@@ -521,7 +586,7 @@ Regarding: ${regarding ? '\n' + regarding : regarding}`.replace('Regarding: \n',
   });
 
   // Date + Regarding typed directly
-  $('dateField').addEventListener('input', render);
+  $('dateField').addEventListener('input', () => { updateDateNote(); render(); });
   $('regarding').addEventListener('input', render);
 
   // +/- buttons
