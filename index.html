@@ -370,12 +370,18 @@
     return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
   }
 
-  const now = new Date();
+ const now = new Date();
   const nowHour = now.getHours();
 
-  // Auto-select shift based on current hour
-  // Night covers 11 PM – 8 AM, Morning 8 AM – 3 PM, Evening 3 PM – 11 PM
-  let shiftIdx = (nowHour >= 23 || nowHour < 8) ? 2 : (nowHour < 15 ? 0 : 1);
+  // 1. التعديل الأول: تحديد الشفت التلقائي بناءً على ساعات الرفع الجديدة
+  let shiftIdx;
+  if (nowHour >= 9 && nowHour < 17) {
+    shiftIdx = 0; // شفت الصباح (تلقائي من 9 صباحاً إلى 5 عصراً)
+  } else if (nowHour >= 17 || nowHour < 1) {
+    shiftIdx = 1; // شفت العصر (تلقائي من 5 عصراً إلى 1 بعد منتصف الليل)
+  } else {
+    shiftIdx = 2; // شفت الليل (تلقائي من 1 بعد منتصف الليل إلى 9 صباحاً)
+  }
 
   function formatDate(iso){
     if(!iso) return '—';
@@ -383,12 +389,19 @@
     return new Date(y, m-1, d).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
   }
 
-  // The date follows the SHIFT you pick:
-  // Morning        → the device's date
-  // Evening / Night → the device's date minus one day
+  // 2. التعديل الثاني: ضبط قاعدة إرجاع التاريخ يوماً للخلف لمنع اللخبطة وقت التداخل
   function shiftStartDate(idx){
     const d = new Date();
-    if (idx !== 0) d.setDate(d.getDate() - 1);
+    const currentHour = d.getHours();
+    
+    // شفت العصر: إذا كنا في الساعة 12 منتصف الليل (0)، نرجع التاريخ يوماً للخلف
+    if (idx === 1 && currentHour === 0) {
+      d.setDate(d.getDate() - 1);
+    }
+    // شفت الليل: إذا كنا في الساعات الأولى من اليوم الجديد (قبل 9 صباحاً)، نرجع التاريخ يوماً للخلف
+    else if (idx === 2 && currentHour < 9) {
+      d.setDate(d.getDate() - 1);
+    }
     return toISO(d);
   }
 
@@ -470,7 +483,6 @@
 
     DETAIL_TYPES.forEach(type => {
       const count = Math.min(clampNum($(type.id)), MAX_ENTRIES);
-      // trim saved data if counter decreased — and remember to re-sync the big box
       if (detailData[type.id].length > count) {
         detailData[type.id].length = count;
         trimmed = true;
@@ -497,9 +509,7 @@
         del.className = 'edel';
         del.textContent = '🗑 Delete';
         del.addEventListener('click', () => {
-          // remove THIS specific entry (not just the last one)
           detailData[type.id].splice(i, 1);
-          // decrement the matching counter
           $(type.id).value = Math.max(0, clampNum($(type.id)) - 1);
           renderDetails();
           syncRegardingFromForms();
@@ -535,11 +545,9 @@
       box.innerHTML = '<div class="empty-note">Increase any counter above to add its details here.</div>';
     }
 
-    // If entries were removed by lowering a counter, wipe them from the big box too
     if (trimmed) syncRegardingFromForms();
   }
 
-  // Compose Regarding text from all filled detail entries
   function composeFromForms(){
     const lines = [];
     DETAIL_TYPES.forEach(type => {
@@ -552,9 +560,6 @@
     return lines.join('\n');
   }
 
-  // Write composed text into the big Regarding box (last writer wins:
-  // editing a form field regenerates the box; editing the box directly keeps your text
-  // until you touch a form field again)
   function syncRegardingFromForms(){
     $('regarding').value = composeFromForms();
   }
@@ -580,16 +585,13 @@ Regarding: ${regarding ? '\n' + regarding : regarding}`.replace('Regarding: \n',
 
   function render(){ $('preview').textContent = buildMessage(); }
 
-  // Counter number typed directly
   document.querySelectorAll('.num').forEach(el => {
     el.addEventListener('input', () => { renderDetails(); render(); });
   });
 
-  // Date + Regarding typed directly
   $('dateField').addEventListener('input', () => { updateDateNote(); render(); });
   $('regarding').addEventListener('input', render);
 
-  // +/- buttons
   document.querySelectorAll('.cbtns button').forEach(btn => {
     btn.addEventListener('click', () => {
       const el = $(btn.dataset.t);
@@ -621,7 +623,6 @@ Regarding: ${regarding ? '\n' + regarding : regarding}`.replace('Regarding: \n',
 
   $('shareBtn').addEventListener('click', async () => {
     const text = buildMessage();
-    // Web Share API — opens the native share sheet on iPhone & Android
     if (navigator.share){
       try{
         await navigator.share({ text });
@@ -630,7 +631,6 @@ Regarding: ${regarding ? '\n' + regarding : regarding}`.replace('Regarding: \n',
         if (e && e.name === 'AbortError') return;
       }
     }
-    // Fallback: open WhatsApp directly with the message pre-filled
     window.location.href = 'https://wa.me/?text=' + encodeURIComponent(text);
   });
 
